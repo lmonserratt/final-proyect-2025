@@ -10,28 +10,37 @@ import java.sql.SQLException;
 /**
  * Modal dialog window used for creating or editing a {@link Movie} record.
  * <p>
- * This dialog is used by the Movie Manager DMS GUI to allow users
- * to input or modify movie information such as ID, title, director,
- * release year, duration, genre, and rating.
+ * This dialog allows users to input or modify movie information such as ID, title,
+ * director, release year, duration, genre, and rating.
  * </p>
  *
- * <p>Features:</p>
+ * <p><b>Features:</b></p>
  * <ul>
- *   <li>Supports both "Create" and "Edit" modes, determined by constructor input.</li>
- *   <li>Performs input validation before saving.</li>
- *   <li>Uses {@link MovieService} to persist data into the database.</li>
- *   <li>Displays user-friendly success and error messages.</li>
+ *   <li>Supports both "Create" and "Edit" modes</li>
+ *   <li>Input validation before saving</li>
+ *   <li>Delegates persistence to {@link MovieService}</li>
+ *   <li>User-friendly success/error messages</li>
  * </ul>
  *
- * <p><b>Author:</b> Luis Augusto Monserratt Alvarado</p>
- * <p><b>Version:</b> 1.0</p>
+ * @author
+ *     Luis Augusto Monserratt Alvarado
+ * @version 1.0
  */
 public class MovieFormDialog extends JDialog {
 
+    /** Text fields for ID, title, director and genre. */
     private JTextField txtId, txtTitle, txtDirector, txtGenre;
+
+    /** Spinners for year, duration (minutes) and rating (0.0–10.0). */
     private JSpinner spYear, spDuration, spRating;
+
+    /** Service layer that performs validation and DB operations. */
     private final MovieService service;
+
+    /** True if this dialog is editing an existing record. */
     private final boolean editMode;
+
+    /** Callback invoked after a successful save/update. */
     private final Runnable onSuccess;
 
     // ---------- FACTORY METHODS ----------
@@ -69,7 +78,7 @@ public class MovieFormDialog extends JDialog {
      * @param owner     the parent window that owns this dialog
      * @param service   the {@link MovieService} to handle database operations
      * @param existing  if non-null, dialog enters edit mode and preloads this movie
-     * @param onSuccess callback executed after successful save/update (non-null)
+     * @param onSuccess callback executed after successful save/update (non-null preferred)
      */
     public MovieFormDialog(Window owner, MovieService service, Movie existing, Runnable onSuccess) {
         super(owner, (existing == null ? "Add Movie" : "Edit Movie"), ModalityType.APPLICATION_MODAL);

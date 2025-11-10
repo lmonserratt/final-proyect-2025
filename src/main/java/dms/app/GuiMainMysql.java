@@ -8,12 +8,11 @@ import javax.swing.SwingUtilities;
 
 /**
  * Main entry point for the MySQL-based Movie Manager DMS application (Phase 4).
- * <p>
- * This class initializes the Swing user interface and collects MySQL database
+ *
+ * <p>This class initializes the Swing user interface and collects MySQL database
  * connection credentials from the user. It then exposes the JDBC information
  * as system properties to be consumed by the DAO/GUI layers and launches the
- * main application window.
- * </p>
+ * main application window.</p>
  *
  * <p><b>Responsibilities</b></p>
  * <ul>
@@ -28,28 +27,23 @@ import javax.swing.SwingUtilities;
  *   java -jar movie-manager-dms-1.0.0.jar
  * }</pre>
  *
- * <p>
- * On launch, the program prompts for connection details. If valid, the GUI is displayed.
- * </p>
+ * <p>On launch, the program prompts for connection details. If valid, the GUI is displayed.</p>
  *
- * @author  Luis Augusto Monserratt
+ * @author  Luis
  * @version 1.0
  * @since   1.0
  * @see     dms.gui.MovieTableFrameMysql
  */
 public final class GuiMainMysql {
 
-  /**
-   * Not instantiable. Use {@link #main(String[])} to start the application.
-   */
+  /** Not instantiable. Use {@link #main(String[])} to start the application. */
   private GuiMainMysql() { }
 
   /**
    * Entry point of the Movie Manager DMS application.
-   * <p>
-   * Runs the Swing event dispatcher thread, collects MySQL credentials via dialogs,
-   * stores them as system properties, and launches the main GUI frame.
-   * </p>
+   *
+   * <p>Runs the Swing event dispatcher thread, collects MySQL credentials via dialogs,
+   * stores them as system properties, and launches the main GUI frame.</p>
    *
    * @param args command-line arguments (unused)
    */

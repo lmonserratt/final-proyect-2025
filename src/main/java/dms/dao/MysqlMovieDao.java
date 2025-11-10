@@ -9,63 +9,77 @@ import java.util.Optional;
 
 /**
  * MySQL implementation of {@link MovieDao} using plain JDBC.
- * <p>
- * This DAO provides CRUD (Create, Read, Update, Delete) and search operations
- * for {@link Movie} objects stored in a MySQL database.
- * It expects a table named {@code movies} in a schema such as {@code dms_movies},
- * with the following columns:
- * </p>
+ *
+ * <p><b>Responsibilities:</b></p>
  * <ul>
- *   <li><b>movie_id</b> VARCHAR(10) PRIMARY KEY</li>
- *   <li><b>title</b> VARCHAR(...)</li>
- *   <li><b>director</b> VARCHAR(...)</li>
- *   <li><b>release_year</b> INT</li>
- *   <li><b>duration_minutes</b> INT</li>
- *   <li><b>genre</b> VARCHAR(...)</li>
- *   <li><b>rating</b> DOUBLE</li>
+ *   <li>Open/close the DB connection</li>
+ *   <li>CRUD operations (findAll, findById, insert, update, delete)</li>
+ *   <li>Case-insensitive search by title using SQL LIKE</li>
  * </ul>
  *
- * <p>All connections must be opened using {@link #connect(String, String, String)}
- * and closed with {@link #close()} to avoid memory leaks.</p>
+ * <p><b>Expected schema</b> (table {@code movies}):</p>
+ * <pre>
+ *  movie_id         VARCHAR(10) PRIMARY KEY,
+ *  title            VARCHAR(100) NOT NULL,
+ *  director         VARCHAR(100),
+ *  release_year     INT,
+ *  duration_minutes INT,
+ *  genre            VARCHAR(50),
+ *  rating           DOUBLE
+ * </pre>
+ *
+ * <p><b>Example JDBC URL</b>:</p>
+ * <pre>
+ * jdbc:mysql://localhost:3306/dms_movies?serverTimezone=UTC&amp;useUnicode=true&amp;characterEncoding=utf8
+ * </pre>
+ *
+ * <h2>Usage</h2>
+ * <pre>{@code
+ * MysqlMovieDao dao = new MysqlMovieDao();
+ * dao.connect(url, user, pass);
+ * List<Movie> movies = dao.findAll();
+ * dao.close();
+ * }</pre>
  *
  * @author Luis
- * @version 1.0
+ * @since 1.0.0
  */
 public class MysqlMovieDao implements MovieDao {
 
-    /** The active JDBC connection to the MySQL database. */
+    /** Active JDBC connection (null when closed). */
     private Connection conn;
+
+    /** Default constructor (no special initialization). */
+    public MysqlMovieDao() { }
 
     // ---------- CONNECTION ----------
 
     /**
-     * Opens a JDBC connection to a MySQL database.
-     * <p>Example JDBC URL:
-     * {@code jdbc:mysql://localhost:3306/dms_movies?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8}</p>
+     * Opens a JDBC connection to MySQL.
      *
-     * @param jdbcUrl JDBC connection URL (cannot be blank)
+     * @param jdbcUrl JDBC URL (e.g., {@code jdbc:mysql://localhost:3306/dms_movies?...})
      * @param user    database username
      * @param pass    database password
-     * @throws SQLException              if the MySQL driver is missing or connection fails
-     * @throws IllegalArgumentException  if {@code jdbcUrl} is null or blank
+     * @throws IllegalArgumentException if {@code jdbcUrl} is blank
+     * @throws SQLException             if the driver is missing or the connection cannot be established
      */
     public void connect(String jdbcUrl, String user, String pass) throws SQLException {
-        if (jdbcUrl == null || jdbcUrl.isBlank())
+        if (jdbcUrl == null || jdbcUrl.isBlank()) {
             throw new IllegalArgumentException("JDBC URL cannot be empty");
-
+        }
         try {
+            // Ensure MySQL driver is available on the classpath
             Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
             throw new SQLException("MySQL JDBC driver not found on classpath.", e);
         }
-
         this.conn = DriverManager.getConnection(jdbcUrl, user, pass);
     }
 
     /**
-     * Checks whether there is an open JDBC connection.
+     * Checks whether the current JDBC connection is open.
      *
-     * @return {@code true} if a connection is established; {@code false} otherwise
+     * @return {@code true} if the connection is valid and open; {@code false} otherwise
      */
     public boolean isConnected() {
         try {
@@ -76,22 +90,24 @@ public class MysqlMovieDao implements MovieDao {
     }
 
     /**
-     * Closes the JDBC connection if it is currently open.
+     * Closes the JDBC connection if it is open.
      *
      * @throws SQLException if closing the connection fails
      */
     public void close() throws SQLException {
-        if (conn != null && !conn.isClosed()) conn.close();
+        if (conn != null && !conn.isClosed()) {
+            conn.close();
+        }
     }
 
     // ---------- HELPERS ----------
 
     /**
-     * Maps a single {@link ResultSet} row into a {@link Movie} object.
+     * Maps the current {@link ResultSet} row into a {@link Movie} object.
      *
-     * @param rs result set positioned on a valid row
-     * @return a new {@link Movie} object populated from the current row
-     * @throws SQLException if column reading fails
+     * @param rs active {@link ResultSet} positioned at a valid row
+     * @return populated {@link Movie} object
+     * @throws SQLException if a column cannot be accessed
      */
     private static Movie mapRow(ResultSet rs) throws SQLException {
         return new Movie(
@@ -105,6 +121,19 @@ public class MysqlMovieDao implements MovieDao {
         );
     }
 
+    /**
+     * Ensures that the database connection is valid before executing queries.
+     *
+     * @return the active {@link Connection}
+     * @throws SQLException if the connection is null or closed
+     */
+    private Connection requireConn() throws SQLException {
+        if (conn == null || conn.isClosed()) {
+            throw new SQLException("No open JDBC connection. Call connect(...) first.");
+        }
+        return conn;
+    }
+
     // ---------- CRUD ----------
 
     /**
@@ -115,12 +144,14 @@ public class MysqlMovieDao implements MovieDao {
      */
     @Override
     public List<Movie> findAll() throws SQLException {
-        String sql = "SELECT movie_id,title,director,release_year,duration_minutes,genre,rating " +
+        final String sql = "SELECT movie_id,title,director,release_year,duration_minutes,genre,rating " +
                 "FROM movies ORDER BY title ASC";
-        List<Movie> list = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql);
+        final List<Movie> list = new ArrayList<>();
+        try (PreparedStatement ps = requireConn().prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) list.add(mapRow(rs));
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
         }
         return list;
     }
@@ -135,12 +166,12 @@ public class MysqlMovieDao implements MovieDao {
      */
     @Override
     public Optional<Movie> findById(String id) throws SQLException {
-        if (id == null || id.isBlank())
+        if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Movie ID cannot be empty");
-
-        String sql = "SELECT movie_id,title,director,release_year,duration_minutes,genre,rating " +
+        }
+        final String sql = "SELECT movie_id,title,director,release_year,duration_minutes,genre,rating " +
                 "FROM movies WHERE movie_id = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = requireConn().prepareStatement(sql)) {
             ps.setString(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return Optional.of(mapRow(rs));
@@ -153,18 +184,18 @@ public class MysqlMovieDao implements MovieDao {
      * Inserts a new movie record into the database.
      *
      * @param movie the movie to insert (must not be null)
-     * @return the inserted movie
+     * @return the inserted {@link Movie}
      * @throws SQLException             if insertion fails (duplicate key, constraint error, etc.)
      * @throws IllegalArgumentException if {@code movie} is null
      */
     @Override
     public Movie insert(Movie movie) throws SQLException {
-        if (movie == null)
+        if (movie == null) {
             throw new IllegalArgumentException("Movie cannot be null");
-
-        String sql = "INSERT INTO movies (movie_id,title,director,release_year,duration_minutes,genre,rating) " +
+        }
+        final String sql = "INSERT INTO movies (movie_id,title,director,release_year,duration_minutes,genre,rating) " +
                 "VALUES (?,?,?,?,?,?,?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = requireConn().prepareStatement(sql)) {
             ps.setString(1, movie.getMovieId());
             ps.setString(2, movie.getTitle());
             ps.setString(3, movie.getDirector());
@@ -180,20 +211,20 @@ public class MysqlMovieDao implements MovieDao {
     /**
      * Updates an existing movie record by its {@code movie_id}.
      *
-     * @param movie the updated movie information
+     * @param movie the updated movie information (must not be null)
      * @return {@code true} if at least one record was updated; {@code false} otherwise
      * @throws SQLException             if a database access error occurs
      * @throws IllegalArgumentException if {@code movie} is null
      */
     @Override
     public boolean update(Movie movie) throws SQLException {
-        if (movie == null)
+        if (movie == null) {
             throw new IllegalArgumentException("Movie cannot be null");
-
-        String sql = "UPDATE movies " +
+        }
+        final String sql = "UPDATE movies " +
                 "SET title=?, director=?, release_year=?, duration_minutes=?, genre=?, rating=? " +
                 "WHERE movie_id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = requireConn().prepareStatement(sql)) {
             ps.setString(1, movie.getTitle());
             ps.setString(2, movie.getDirector());
             ps.setInt(3, movie.getReleaseYear());
@@ -201,7 +232,7 @@ public class MysqlMovieDao implements MovieDao {
             ps.setString(5, movie.getGenre());
             ps.setDouble(6, movie.getRating());
             ps.setString(7, movie.getMovieId());
-            int rows = ps.executeUpdate();
+            final int rows = ps.executeUpdate();
             return rows > 0;
         }
     }
@@ -216,13 +247,13 @@ public class MysqlMovieDao implements MovieDao {
      */
     @Override
     public boolean delete(String id) throws SQLException {
-        if (id == null || id.isBlank())
+        if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Movie ID cannot be empty");
-
-        String sql = "DELETE FROM movies WHERE movie_id = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        }
+        final String sql = "DELETE FROM movies WHERE movie_id = ?";
+        try (PreparedStatement ps = requireConn().prepareStatement(sql)) {
             ps.setString(1, id);
-            int rows = ps.executeUpdate();
+            final int rows = ps.executeUpdate();
             return rows > 0;
         }
     }
@@ -230,8 +261,7 @@ public class MysqlMovieDao implements MovieDao {
     // ---------- CUSTOM QUERY ----------
 
     /**
-     * Searches for movies whose title contains a specific text fragment.
-     * The search is case-insensitive.
+     * Searches for movies whose title contains a specific text fragment (case-insensitive).
      *
      * @param titleFragment partial title text to search (must not be blank)
      * @return a non-null list of movies that match the search term
@@ -239,13 +269,13 @@ public class MysqlMovieDao implements MovieDao {
      * @throws IllegalArgumentException if {@code titleFragment} is null or blank
      */
     public List<Movie> searchByTitle(String titleFragment) throws SQLException {
-        if (titleFragment == null || titleFragment.isBlank())
+        if (titleFragment == null || titleFragment.isBlank()) {
             throw new IllegalArgumentException("Title fragment cannot be empty");
-
-        String sql = "SELECT movie_id,title,director,release_year,duration_minutes,genre,rating " +
+        }
+        final String sql = "SELECT movie_id,title,director,release_year,duration_minutes,genre,rating " +
                 "FROM movies WHERE LOWER(title) LIKE LOWER(?) ORDER BY title ASC";
-        List<Movie> list = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        final List<Movie> list = new ArrayList<>();
+        try (PreparedStatement ps = requireConn().prepareStatement(sql)) {
             ps.setString(1, "%" + titleFragment.trim() + "%");
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(mapRow(rs));
