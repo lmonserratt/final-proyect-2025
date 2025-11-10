@@ -1,22 +1,63 @@
 package dms.app;
 
 import dms.gui.MovieTableFrameMysql;
-import javax.swing.*;
+
+import javax.swing.JPasswordField;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 /**
- * Entry point for the MySQL-based Movie Manager DMS application.
- * This class prompts the user for MySQL connection details and
- * launches the main GUI window once the connection parameters are set.
+ * Main entry point for the MySQL-based Movie Manager DMS application (Phase 4).
+ * <p>
+ * This class initializes the Swing user interface and collects MySQL database
+ * connection credentials from the user. It then exposes the JDBC information
+ * as system properties to be consumed by the DAO/GUI layers and launches the
+ * main application window.
+ * </p>
  *
- * Author: Luis Augusto Monserratt Alvarado
+ * <p><b>Responsibilities</b></p>
+ * <ul>
+ *   <li>Prompt the user for MySQL host, username, and password.</li>
+ *   <li>Construct a JDBC URL targeting the {@code dms_movies} schema.</li>
+ *   <li>Store {@code JDBC_URL}, {@code DB_USER}, and {@code DB_PASS} as system properties.</li>
+ *   <li>Launch {@link dms.gui.MovieTableFrameMysql}.</li>
+ * </ul>
+ *
+ * <p><b>Usage</b></p>
+ * <pre>{@code
+ *   java -jar movie-manager-dms-1.0.0.jar
+ * }</pre>
+ *
+ * <p>
+ * On launch, the program prompts for connection details. If valid, the GUI is displayed.
+ * </p>
+ *
+ * @author  Luis Augusto Monserratt
+ * @version 1.0
+ * @since   1.0
+ * @see     dms.gui.MovieTableFrameMysql
  */
-public class GuiMainMysql {
+public final class GuiMainMysql {
 
+  /**
+   * Not instantiable. Use {@link #main(String[])} to start the application.
+   */
+  private GuiMainMysql() { }
+
+  /**
+   * Entry point of the Movie Manager DMS application.
+   * <p>
+   * Runs the Swing event dispatcher thread, collects MySQL credentials via dialogs,
+   * stores them as system properties, and launches the main GUI frame.
+   * </p>
+   *
+   * @param args command-line arguments (unused)
+   */
   public static void main(String[] args) {
     SwingUtilities.invokeLater(() -> {
       try {
-        // Prompt for MySQL host (e.g., localhost)
-        String host = JOptionPane.showInputDialog(
+        // --- Step 1: Request MySQL Host ---
+        final String host = JOptionPane.showInputDialog(
                 null,
                 "Enter MySQL host (e.g., localhost):",
                 "Database Connection",
@@ -27,8 +68,8 @@ public class GuiMainMysql {
           System.exit(0);
         }
 
-        // Prompt for MySQL username
-        String user = JOptionPane.showInputDialog(
+        // --- Step 2: Request MySQL Username ---
+        final String user = JOptionPane.showInputDialog(
                 null,
                 "Enter MySQL username:",
                 "Database Connection",
@@ -39,35 +80,39 @@ public class GuiMainMysql {
           System.exit(0);
         }
 
-        // Prompt for MySQL password
-        String pass = JOptionPane.showInputDialog(
+        // --- Step 3: Request MySQL Password (hidden field) ---
+        final JPasswordField pwdField = new JPasswordField();
+        final int opt = JOptionPane.showConfirmDialog(
                 null,
+                pwdField,
                 "Enter MySQL password:",
-                "Database Connection",
+                JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.QUESTION_MESSAGE
         );
-        if (pass == null) pass = "";
+        String pass = (opt == JOptionPane.OK_OPTION) ? new String(pwdField.getPassword()) : "";
+        if (pass == null) pass = ""; // never null
 
-        // ✅ Build JDBC connection string dynamically
-        String url = "jdbc:mysql://" + host + ":3306/dms_movies" +
-                "?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8";
+        // --- Step 4: Construct the JDBC URL (default port 3306 and schema dms_movies) ---
+        final String url = "jdbc:mysql://" + host.trim() + ":3306/dms_movies"
+                + "?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8";
 
-        // ✅ Store connection properties for MovieTableFrameMysql to use
+        // --- Step 5: Publish connection data as system properties ---
         System.setProperty("JDBC_URL", url);
-        System.setProperty("DB_USER", user);
+        System.setProperty("DB_USER", user.trim());
         System.setProperty("DB_PASS", pass);
 
-        // ✅ Launch the main application window
+        // --- Step 6: Launch the Main GUI Window ---
         new MovieTableFrameMysql().setVisible(true);
 
       } catch (Exception e) {
-        e.printStackTrace();
+        // Show a concise error dialog and exit gracefully
         JOptionPane.showMessageDialog(
                 null,
                 "Error initializing application:\n" + e.getMessage(),
                 "Startup Error",
                 JOptionPane.ERROR_MESSAGE
         );
+        System.exit(1);
       }
     });
   }

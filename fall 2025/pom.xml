@@ -7,15 +7,22 @@
   <groupId>dms</groupId>
   <artifactId>movie-manager-dms</artifactId>
   <version>1.0.0</version>
+  <name>movie-manager-dms</name>
+  <description>Phase 4 - GUI + MySQL + Javadoc</description>
 
   <properties>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
+    <!-- Ensure UTF-8 encoding for consistent builds across platforms -->
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- Specify Java release version for compatibility -->
     <maven.compiler.release>17</maven.compiler.release>
+
+    <!-- Prevent Javadoc generation errors from failing the entire build -->
+    <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
 
   <dependencies>
-    <!-- MySQL JDBC driver -->
+    <!-- MySQL JDBC driver dependency -->
     <dependency>
       <groupId>com.mysql</groupId>
       <artifactId>mysql-connector-j</artifactId>
@@ -25,7 +32,18 @@
 
   <build>
     <plugins>
-      <!-- JAR único con dependencias incluidas -->
+      <!-- Compiler Plugin: compiles Java source code using Java 17 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+          <encoding>${project.build.sourceEncoding}</encoding>
+        </configuration>
+      </plugin>
+
+      <!-- Shade Plugin: packages all dependencies into a single executable JAR -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -33,15 +51,50 @@
         <executions>
           <execution>
             <phase>package</phase>
-            <goals><goal>shade</goal></goals>
+            <goals>
+              <goal>shade</goal>
+            </goals>
             <configuration>
+              <!-- Prevents Maven from generating an additional POM -->
               <createDependencyReducedPom>false</createDependencyReducedPom>
               <transformers>
+                <!-- Adds the Main-Class entry for executing with 'java -jar' -->
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>dms.app.GuiMainMysql</mainClass>
                 </transformer>
               </transformers>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Javadoc Plugin: generates HTML documentation in target/reports/apidocs -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.12.0</version>
+        <configuration>
+          <!-- Output directories for Javadoc HTML files -->
+          <destDir>apidocs</destDir>
+          <reportOutputDirectory>${project.build.directory}/reports</reportOutputDirectory>
+
+          <!-- Disable doclint to avoid strict HTML validation issues -->
+          <doclint>none</doclint>
+
+          <!-- Ensure consistent Java and encoding settings -->
+          <source>17</source>
+          <encoding>${project.build.sourceEncoding}</encoding>
+
+          <!-- Prevents Javadoc warnings from causing build failures -->
+          <failOnError>false</failOnError>
+        </configuration>
+
+        <executions>
+          <!-- Automatically generates a javadoc.jar file during the package phase -->
+          <execution>
+            <goals>
+              <goal>jar</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

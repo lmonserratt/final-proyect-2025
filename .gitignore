@@ -1,6 +1,11 @@
-
-/target/
-/out/
-*.iml/.idea/
-eval "$(ssh-agent -s)"
-eval "$(ssh-agent -s)".pub
+target/
+*.iml
+*.class
+*.log
+.idea/
+out/
+.DS_Store
+Thumbs.db
+node_modules/
+!docs/
+!dist/

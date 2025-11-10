@@ -1,32 +1,56 @@
-
--- ===========================================
+-- ==========================================================
 --  Database: dms_movies
 --  Author: Luis Augusto Monserratt Alvarado
---  Description: Full setup script for Movie Manager DMS (MySQL version)
--- ===========================================
+--  Project: Movie Manager Data Management System (DMS)
+--  Description:
+--     This script creates and populates the MySQL database for
+--     the Movie Manager DMS project.
+--     It includes table structure, constraints, and sample data.
+--
+--  Usage:
+--     1. Run this script in MySQL or DataGrip.
+--     2. The database will be created as "dms_movies".
+--     3. It will automatically insert 20 sample movie records.
+--
+--  Date: November 2025
+-- ==========================================================
 
+-- -------------------------------
+-- STEP 1: Create Database
+-- -------------------------------
 CREATE DATABASE IF NOT EXISTS dms_movies
-  DEFAULT CHARACTER SET utf8mb4
-  DEFAULT COLLATE utf8mb4_0900_ai_ci;
+    DEFAULT CHARACTER SET utf8mb4
+    DEFAULT COLLATE utf8mb4_0900_ai_ci;
 
 USE dms_movies;
 
+-- -------------------------------
+-- STEP 2: Drop old table (if exists)
+-- -------------------------------
 DROP TABLE IF EXISTS movies;
 
+-- -------------------------------
+-- STEP 3: Create Table Definition
+-- -------------------------------
 CREATE TABLE movies (
-                        movie_id         VARCHAR(10)  NOT NULL,
-                        title            VARCHAR(200) NOT NULL,
-                        director         VARCHAR(120) NOT NULL,
-                        release_year     INT          NOT NULL,
-                        duration_minutes INT          NOT NULL,
-                        genre            VARCHAR(80)  NOT NULL,
-                        rating           DOUBLE       NOT NULL,
+                        movie_id         VARCHAR(10)  NOT NULL,         -- Unique movie identifier (e.g., "INT2010")
+                        title            VARCHAR(200) NOT NULL,         -- Movie title
+                        director         VARCHAR(120) NOT NULL,         -- Director name(s)
+                        release_year     INT          NOT NULL,         -- Year of release (1888..2100)
+                        duration_minutes INT          NOT NULL,         -- Duration in minutes (1..999)
+                        genre            VARCHAR(80)  NOT NULL,         -- Genre (e.g., Action, Drama)
+                        rating           DOUBLE       NOT NULL,         -- Rating between 0.0 and 10.0
+
+    -- Constraints
                         CONSTRAINT pk_movies PRIMARY KEY (movie_id),
                         CONSTRAINT chk_release_year CHECK (release_year BETWEEN 1888 AND 2100),
                         CONSTRAINT chk_duration CHECK (duration_minutes BETWEEN 1 AND 999),
                         CONSTRAINT chk_rating CHECK (rating BETWEEN 0.0 AND 10.0)
 );
 
+-- -------------------------------
+-- STEP 4: Insert Sample Data
+-- -------------------------------
 INSERT INTO movies (movie_id, title, director, release_year, duration_minutes, genre, rating) VALUES
                                                                                                   ('AVA2015','Avatar','James Cameron',2009,162,'Science Fiction',8.0),
                                                                                                   ('INT2010','Inception','Christopher Nolan',2010,148,'Science Fiction',9.0),
@@ -49,6 +73,13 @@ INSERT INTO movies (movie_id, title, director, release_year, duration_minutes, g
                                                                                                   ('WHI2014','Whiplash','Damien Chazelle',2014,106,'Drama',8.5),
                                                                                                   ('PAR2019','Parasite','Bong Joon-ho',2019,132,'Thriller',8.6);
 
+-- -------------------------------
+-- STEP 5: Verification Queries
+-- -------------------------------
 USE dms_movies;
-SELECT COUNT(*) FROM movies;
+
+-- Count number of rows inserted
+SELECT COUNT(*) AS total_movies FROM movies;
+
+-- Preview first 20 movies
 SELECT * FROM movies LIMIT 20;

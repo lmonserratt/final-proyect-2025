@@ -12,17 +12,30 @@ import java.sql.SQLException;
 import java.util.List;
 
 /**
- * Main window (MySQL): auto-connect on startup, then full CRUD, search, and average duration.
- * If auto-connect fails, a manual connection dialog is offered as a fallback.
- * Includes a tiny "seed" routine to populate the table if it is empty.
+ * Main Swing window for the MySQL-backed Movie Manager DMS.
+ * <p>
+ * Responsibilities:
+ * <ul>
+ *   <li>Auto-connects to MySQL on startup using default/system properties.</li>
+ *   <li>Provides full CRUD actions (Create, Read, Update, Delete).</li>
+ *   <li>Provides search by title and a custom action to compute average duration.</li>
+ *   <li>Offers manual connection dialog if auto-connection fails.</li>
+ *   <li>Optionally seeds the DB with a minimal row when the table is empty (first run).</li>
+ * </ul>
+ *
+ * <p>System properties/environment variables supported:</p>
+ * <ul>
+ *   <li><b>JDBC_URL</b> – e.g., {@code jdbc:mysql://localhost:3306/dms_movies?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8}</li>
+ *   <li><b>DB_USER</b> – DB username</li>
+ *   <li><b>DB_PASS</b> – DB password</li>
+ * </ul>
+ *
+ * <p><b>Author:</b> Luis Augusto Monserratt Alvarado</p>
+ * <p><b>Version:</b> 1.0</p>
  */
 public class MovieTableFrameMysql extends JFrame {
 
-    // ---- Auto-connect defaults (change these if needed) ----
-    // You can also override them via JVM system properties when running:
-    //   -DJDBC_URL=jdbc:mysql://...
-    //   -DDB_USER=root
-    //   -DDB_PASS=secret
+    // ---- Auto-connect defaults (can be overridden by -D props or env vars) ----
     private static final String DEFAULT_JDBC_URL =
             getPropOrEnv("JDBC_URL",
                     "jdbc:mysql://localhost:3306/dms_movies?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8");
@@ -35,6 +48,10 @@ public class MovieTableFrameMysql extends JFrame {
     private final MovieDao dao;
     private final MovieService service;
 
+    /**
+     * Builds the main window, initializes UI widgets, and attempts an automatic MySQL connection.
+     * <p>If auto-connection fails, a manual connection dialog is offered.</p>
+     */
     public MovieTableFrameMysql() {
         super("DMS – Movies (MySQL)");
         this.dao = new MysqlMovieDao();
@@ -71,7 +88,9 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Build the toolbar, search panel, and table area.
+     * Builds toolbar, search panel, and central table area; wires UI actions.
+     *
+     * @return the root panel for this frame
      */
     private JPanel buildContent() {
         // Toolbar
@@ -136,16 +155,16 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Attempts an automatic connection using the default URL/credentials.
+     * Attempts an automatic connection using default URL/credentials.
      * If successful, seeds the DB if empty and loads all movies into the table.
      *
-     * @return true if auto-connect succeeded; false otherwise.
+     * @return {@code true} if auto-connect succeeded; {@code false} otherwise
      */
     private boolean autoConnectAndLoad() {
         try {
             service.connect(DEFAULT_JDBC_URL, DEFAULT_DB_USER, DEFAULT_DB_PASS);
             if (service.isConnected()) {
-                ensureSeedIfEmpty();             // <-- Seed only when table is empty
+                ensureSeedIfEmpty();             // Seed only when table is empty
                 applyTableData(service.readAll());
                 System.out.println("✅ Auto-connected to MySQL, seeded if empty, and loaded data.");
                 return true;
@@ -158,7 +177,9 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Manual connection dialog for host/port/db/user/password.
+     * Shows a modal dialog to capture MySQL connection parameters and connect.
+     *
+     * @return {@code true} if connected successfully; {@code false} otherwise
      */
     private boolean showConnectionDialogAndConnect() {
         JTextField host = new JTextField("localhost");
@@ -197,9 +218,8 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Seeds the database with at least one row if table 'movies' is empty.
-     * This guarantees that a fresh DB still shows content on first run.
-     * You can replace the single INSERT with your full 20-row seed if desired.
+     * Seeds the database with at least one row if table {@code movies} is empty.
+     * <p>This ensures a fresh DB shows content on first run. Non-blocking on failure.</p>
      */
     private void ensureSeedIfEmpty() {
         try (java.sql.Connection c =
@@ -227,7 +247,7 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Reloads all data into the table if connected.
+     * Reloads all data from the DB into the table if connected; shows an error otherwise.
      */
     private void safeRefreshAll() {
         if (!service.isConnected()) { showError("You are not connected to MySQL. Click Connect first."); return; }
@@ -239,7 +259,7 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Search handler: filters by title using LIKE on the DAO side.
+     * Search action: filters by title (case-insensitive LIKE on DAO side).
      */
     private void onSearch() {
         if (!service.isConnected()) { showError("You are not connected to MySQL. Click Connect first."); return; }
@@ -255,7 +275,7 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Create handler: opens modal form and refreshes on success.
+     * Create handler: opens the modal creation dialog and refreshes the table on success.
      */
     private void onAdd() {
         if (!service.isConnected()) { showError("You are not connected to MySQL. Click Connect first."); return; }
@@ -263,7 +283,7 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Update handler: requires a selected row, then opens modal edit.
+     * Update handler: requires a selected row; opens the modal edit dialog and refreshes on success.
      */
     private void onEdit() {
         if (!service.isConnected()) { showError("You are not connected to MySQL. Click Connect first."); return; }
@@ -273,7 +293,7 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Delete handler: asks for confirmation, then deletes by movie_id (String).
+     * Delete handler: asks for confirmation and deletes by {@code movie_id}.
      */
     private void onDelete() {
         if (!service.isConnected()) { showError("You are not connected to MySQL. Click Connect first."); return; }
@@ -293,7 +313,7 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Custom action: average duration of all movies.
+     * Custom action handler: computes and shows the average duration of all movies.
      */
     private void onAverage() {
         if (!service.isConnected()) { showError("You are not connected to MySQL. Click Connect first."); return; }
@@ -307,7 +327,7 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Graceful exit: closes DB connection if open, then exits.
+     * Graceful exit handler: closes DB connection (if open), disposes the frame, and exits JVM.
      */
     private void onExit() {
         try { service.close(); } catch (SQLException ignore) {}
@@ -316,7 +336,9 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Applies a list of Movie objects to the table model.
+     * Applies a list of movies to the table model and clears selection.
+     *
+     * @param list list of {@link Movie} objects to render
      */
     private void applyTableData(List<Movie> list) {
         tableModel.setRowCount(0);
@@ -330,7 +352,9 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Extracts the currently selected Movie from the table.
+     * Extracts the currently selected {@link Movie} from the table, or returns {@code null} if none selected.
+     *
+     * @return selected movie or {@code null}
      */
     private Movie getSelectedMovieFromTable() {
         int viewRow = table.getSelectedRow();
@@ -346,12 +370,21 @@ public class MovieTableFrameMysql extends JFrame {
         return new Movie(id, title, director, year, duration, genre, rating);
     }
 
-    /** Shows an error dialog with a friendly message. */
+    /**
+     * Shows an error dialog with the given message.
+     *
+     * @param msg message to display
+     */
     private void showError(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
-    /** Truncates very long SQL messages to keep dialogs readable. */
+    /**
+     * Truncates very long SQL messages to keep dialogs readable.
+     *
+     * @param ex SQL exception
+     * @return shortened, user-friendly message
+     */
     private static String friendlySql(SQLException ex) {
         String msg = ex.getMessage();
         if (msg == null || msg.isBlank()) return "Unknown SQL error.";
@@ -360,8 +393,12 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Utility: read from System property first, then env var, else default.
-     * Example: -DDB_USER=root (or set environment variable DB_USER).
+     * Utility: reads a value from System properties first, then environment variables, or returns a default.
+     * <p>Example: run with {@code -DDB_USER=root} or set env var {@code DB_USER}.</p>
+     *
+     * @param key    property/env key
+     * @param defVal default value if not found
+     * @return resolved value
      */
     private static String getPropOrEnv(String key, String defVal) {
         String v = System.getProperty(key);
