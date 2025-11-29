@@ -23,7 +23,14 @@ import java.util.List;
  *   <li>Optional one-row seed if the table is empty (first run)</li>
  * </ul>
  *
- * <p><b>System properties / environment variables</b>:</p>
+ * <p><b>Connection behavior (final version):</b></p>
+ * <ul>
+ *   <li>The database location is fixed to {@code jdbc:mysql://localhost:3306/dms_movies}.</li>
+ *   <li>The user never types the database URL, host, port, or schema name.</li>
+ *   <li>The user only supplies username and password when needed.</li>
+ * </ul>
+ *
+ * <p><b>System properties / environment variables</b> (optional overrides):</p>
  * <ul>
  *   <li><b>JDBC_URL</b> – e.g., {@code jdbc:mysql://localhost:3306/dms_movies?serverTimezone=UTC&amp;useUnicode=true&amp;characterEncoding=utf8}</li>
  *   <li><b>DB_USER</b> – DB username</li>
@@ -32,7 +39,7 @@ import java.util.List;
  *
  * @author
  *     Luis Augusto Monserratt Alvarado
- * @version 1.0
+ * @version 1.1
  */
 public class MovieTableFrameMysql extends JFrame {
 
@@ -65,7 +72,8 @@ public class MovieTableFrameMysql extends JFrame {
 
     /**
      * Builds the main window, initializes UI widgets, and attempts an automatic MySQL connection.
-     * <p>If auto-connection fails, a manual connection dialog is offered.</p>
+     * <p>If auto-connection fails, a simple connection dialog is offered where the user only
+     * provides username and password (the DB location is fixed).</p>
      */
     public MovieTableFrameMysql() {
         super("DMS – Movies (MySQL)");
@@ -192,35 +200,44 @@ public class MovieTableFrameMysql extends JFrame {
     }
 
     /**
-     * Shows a modal dialog to capture MySQL connection parameters and connect.
+     * Shows a simple modal dialog to capture only MySQL username and password
+     * and connects using the default JDBC URL:
+     * {@code jdbc:mysql://localhost:3306/dms_movies?...}
+     *
+     * <p>This avoids forcing the user to type the database location manually,
+     * while still allowing them to supply credentials as required.</p>
      *
      * @return {@code true} if connected successfully; {@code false} otherwise
      */
     private boolean showConnectionDialogAndConnect() {
-        JTextField host = new JTextField("localhost");
-        JTextField port = new JTextField("3306");
-        JTextField db = new JTextField("dms_movies");
-        JTextField user = new JTextField(DEFAULT_DB_USER);
-        JPasswordField pass = new JPasswordField(DEFAULT_DB_PASS);
+        JTextField userField = new JTextField(DEFAULT_DB_USER);
+        JPasswordField passField = new JPasswordField(DEFAULT_DB_PASS);
 
         JPanel p = new JPanel(new GridLayout(0, 2, 8, 8));
-        p.add(new JLabel("Host:"));     p.add(host);
-        p.add(new JLabel("Port:"));     p.add(port);
-        p.add(new JLabel("Database:")); p.add(db);
-        p.add(new JLabel("User:"));     p.add(user);
-        p.add(new JLabel("Password:")); p.add(pass);
+        p.add(new JLabel("Username:")); p.add(userField);
+        p.add(new JLabel("Password:")); p.add(passField);
 
-        int res = JOptionPane.showConfirmDialog(this, p, "Connect to MySQL",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        int res = JOptionPane.showConfirmDialog(
+                this,
+                p,
+                "Connect to MySQL (dms_movies)",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
         if (res != JOptionPane.OK_OPTION) return false;
 
-        String jdbcUrl = String.format(
-                "jdbc:mysql://%s:%s/%s?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8",
-                host.getText().trim(), port.getText().trim(), db.getText().trim());
+        String user = userField.getText().trim();
+        String pass = new String(passField.getPassword());
+
         try {
-            service.connect(jdbcUrl, user.getText(), new String(pass.getPassword()));
-            JOptionPane.showMessageDialog(this, "Connected to MySQL successfully.",
-                    "Connection", JOptionPane.INFORMATION_MESSAGE);
+            // Always use default URL: jdbc:mysql://localhost:3306/dms_movies...
+            service.connect(DEFAULT_JDBC_URL, user, pass);
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Connected to MySQL successfully.\nDatabase: dms_movies",
+                    "Connection",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
             return true;
         } catch (IllegalArgumentException iae) {
             showError("Validation error:\n" + iae.getMessage());
