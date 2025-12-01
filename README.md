@@ -172,7 +172,7 @@ Ensures proper connection lifecycle (connect / close)
 
 🎥 Final Video Presentation (YouTube)
 
-👉 Click Here to Watch the Full Demonstration
+👉 [Click Here to Watch the Full Demonstration](https://youtu.be/aDpJzg3VKL8)
 
 (Includes GUI demo, MySQL interaction, SDLC explanation, and reflection.)
 
